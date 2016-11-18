@@ -1,0 +1,325 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Data.SqlClient;
+using System.Drawing;
+using System.Globalization;
+using System.Linq;
+using System.Net.NetworkInformation;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using System.Windows.Forms.DataVisualization.Charting;
+namespace AgileSWDev
+{
+    public partial class Form1 : Form
+    {
+        private DateTime baslangic_zaman;
+        private DateTime bitis_zaman;
+        private static SqlConnection baglanti = new SqlConnection("Data Source=MANVDJURT1;" + "Password=asd.1234;User ID=astg;" +
+       "Integrated Security=false; " + "Initial Catalog=SMARTPHONE_TEST");
+        SqlDataReader oku;
+
+        public Form1()
+        {
+            InitializeComponent();
+        }
+
+        private void Form1_Load(object sender, EventArgs e)
+        {
+            this.Location = new Point(Screen.PrimaryScreen.WorkingArea.Left, Screen.PrimaryScreen.WorkingArea.Top);
+            this.WindowState = FormWindowState.Maximized;
+            this.Height = Screen.PrimaryScreen.WorkingArea.Height;
+            this.Width = Screen.PrimaryScreen.WorkingArea.Width;
+            this.MinimumSize = this.Size;
+            this.MaximumSize = this.Size;
+
+            manfile_ile_zamani_senkronize_et();
+            label_baglanti.Location = new Point(this.Width - 200, 50);
+            button_Sonuclari_Getir.Location = new Point(label_baglanti.Location.X-172-40,button_Sonuclari_Getir.Location.Y);
+            dateTimePicker_Baslangic.Format = DateTimePickerFormat.Custom;
+            dateTimePicker_Baslangic.CustomFormat = "dd MM yyyy HH mm ss";
+            //dateTimePicker_Baslangic.MaxDate = DateTime.Now;
+            baslangic_zaman = dateTimePicker_Baslangic.Value;
+
+            dateTimePicker_Bitis.Format = DateTimePickerFormat.Custom;
+            dateTimePicker_Bitis.CustomFormat = "dd MM yyyy HH mm ss";
+            Load_Display_Preferences();
+        }
+
+        private void manfile_ile_zamani_senkronize_et()
+        {
+            System.Diagnostics.Process p = new System.Diagnostics.Process();
+            p.StartInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Normal;
+            p.StartInfo.FileName = "cmd.exe";
+            //p.StartInfo.WorkingDirectory = @"C:\tablet\";
+            p.StartInfo.Arguments = @"/c NET TIME \\MANFILE1 /SET /YES";
+            p.StartInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
+            p.StartInfo.CreateNoWindow = true;
+            p.StartInfo.RedirectStandardOutput = true;
+            p.StartInfo.RedirectStandardError = true;
+
+            p.StartInfo.UseShellExecute = false;
+            p.Start();
+
+            string output = p.StandardOutput.ReadToEnd();
+            string error = p.StandardError.ReadToEnd();
+        }
+
+        private void Load_Display_Preferences()
+        {
+            comboBox_display_preferences.Items.Add("");
+            comboBox_display_preferences.Items.Add("Son 1 Saat");
+            comboBox_display_preferences.Items.Add("Son 4 Saat");
+            comboBox_display_preferences.Items.Add("Son 8 Saat");
+            comboBox_display_preferences.Items.Add("Son 12 Saat");
+            comboBox_display_preferences.Items.Add("Son 24 Saat");
+        }
+
+        private void timer1_Tick(object sender, EventArgs e)
+        {
+            if (comboBox_display_preferences.Text == "Son 1 Saat")
+            {
+                Set_DT_Picker_To_Last_1_Hours();
+            }
+            else if (comboBox_display_preferences.Text == "Son 4 Saat")
+            {
+                Set_DT_Picker_To_Last_4_Hours();
+            }
+            else if (comboBox_display_preferences.Text == "Son 8 Saat")
+            {
+                Set_DT_Picker_To_Last_8_Hours();
+            }
+            else if (comboBox_display_preferences.Text == "Son 12 Saat")
+            {
+                Set_DT_Picker_To_Last_12_Hours();
+            }
+            else if (comboBox_display_preferences.Text == "Son 24 Saat")
+            {
+                Set_DT_Picker_To_Last_24_Hours();
+            }
+            button_Sonuclari_Getir.PerformClick();
+        } // Görüntüleme Seçenekleri ComboBox'ýný doldurur
+
+        #region dt picker islemleri
+        private void Set_DT_Picker_To_Last_24_Hours()
+        {
+            dateTimePicker_Baslangic.Text = DateTime.Now.AddHours(-24).ToString();
+            dateTimePicker_Bitis.Text = DateTime.Now.ToString();
+        }
+
+        private void Set_DT_Picker_To_Last_12_Hours()
+        {
+            dateTimePicker_Baslangic.Text = DateTime.Now.AddHours(-12).ToString();
+            dateTimePicker_Bitis.Text = DateTime.Now.ToString();
+        }
+
+        private void Set_DT_Picker_To_Last_8_Hours()
+        {
+            dateTimePicker_Baslangic.Text = DateTime.Now.AddHours(-8).ToString();
+            dateTimePicker_Bitis.Text = DateTime.Now.ToString();
+        }
+
+        private void Set_DT_Picker_To_Last_4_Hours()
+        {
+            dateTimePicker_Baslangic.Text = DateTime.Now.AddHours(-4).ToString();
+            dateTimePicker_Bitis.Text = DateTime.Now.ToString();
+        }
+
+        private void Set_DT_Picker_To_Last_1_Hours()
+        {
+            dateTimePicker_Baslangic.Text = DateTime.Now.AddHours(-1).ToString();
+            dateTimePicker_Bitis.Text = DateTime.Now.ToString();
+        }
+
+        private void dateTimePicker_Baslangic_ValueChanged(object sender, EventArgs e)
+        {
+            baslangic_zaman = dateTimePicker_Baslangic.Value;
+        }
+
+        private void dateTimePicker_Bitis_ValueChanged(object sender, EventArgs e)
+        {
+            bitis_zaman = dateTimePicker_Bitis.Value;
+        }
+        #endregion
+
+        private void comboBox_display_preferences_SelectionChangeCommitted(object sender, EventArgs e)
+        {
+            if (comboBox_display_preferences.SelectedItem.ToString() == "")
+            {
+                checkBox_otomatik_yenileme.CheckState = CheckState.Unchecked;
+            }
+            else if (comboBox_display_preferences.SelectedItem.ToString() == "Son 1 Saat")
+            {
+                Set_DT_Picker_To_Last_1_Hours();
+            }
+            else if (comboBox_display_preferences.SelectedItem.ToString() == "Son 4 Saat")
+            {
+                Set_DT_Picker_To_Last_4_Hours();
+            }
+            else if (comboBox_display_preferences.SelectedItem.ToString() == "Son 8 Saat")
+            {
+                Set_DT_Picker_To_Last_8_Hours();
+            }
+            else if (comboBox_display_preferences.SelectedItem.ToString() == "Son 12 Saat")
+            {
+                Set_DT_Picker_To_Last_12_Hours();
+            }
+            else if (comboBox_display_preferences.SelectedItem.ToString() == "Son 24 Saat")
+            {
+                Set_DT_Picker_To_Last_24_Hours();
+            }
+
+            baslangic_zaman = dateTimePicker_Baslangic.Value;
+            bitis_zaman = dateTimePicker_Bitis.Value;
+        }
+
+        private void button_Sonuclari_Getir_Click(object sender, EventArgs e)
+        {
+            chart1.Series.Clear();
+            baslangic_zaman = dateTimePicker_Baslangic.Value;
+            bitis_zaman = dateTimePicker_Bitis.Value;
+            if (chart1.Series.IndexOf(comboBox_display_preferences.Text) == -1)
+            {
+                chart1.Series.Add(comboBox_display_preferences.Text);
+            }
+            else
+                chart1.Series[comboBox_display_preferences.Text].Points.Clear();
+
+            chart1.Series[comboBox_display_preferences.Text].XValueType = ChartValueType.DateTime;
+            chart1.ChartAreas[0].AxisY.Maximum = 200;
+            chart1.ChartAreas[0].AxisX.IntervalType = DateTimeIntervalType.Hours;
+            chart1.Series[comboBox_display_preferences.Text].ChartType = SeriesChartType.Column;
+            chart1.ChartAreas[0].AxisX.LabelStyle.Format = "yyyy-MM-dd HH:mm:ss";
+            DateTime now = DateTime.Now;
+            CultureInfo ci = CultureInfo.InvariantCulture;
+
+            string xAxisMinimum = dateTimePicker_Baslangic.Value.Date.ToString("yyyy-MM-dd HH:mm:ss").Substring(0, 10) + " 08:00:00";
+            string xAxisMaxiumum = dateTimePicker_Bitis.Value.Date.ToString("yyyy-MM-dd HH:mm:ss").Substring(0, 10)+" 18:00:00";
+            
+            DateTime startdate = DateTime.ParseExact(xAxisMinimum, "yyyy-MM-dd HH:mm:ss", ci);
+            DateTime enddate = DateTime.ParseExact(xAxisMaxiumum, "yyyy-MM-dd HH:mm:ss", ci);
+            chart1.Series[comboBox_display_preferences.Text].IsValueShownAsLabel = true;
+            chart1.ChartAreas[0].AxisX.Maximum = enddate.ToOADate();
+            chart1.ChartAreas[0].AxisX.Minimum = startdate.ToOADate();
+            double xDegeri = (bitis_zaman.ToOADate() + baslangic_zaman.ToOADate())/2;
+            Select_Chart_Data(baslangic_zaman, bitis_zaman);
+            foreach(var a in values)
+            {                
+            chart1.Series[comboBox_display_preferences.Text].Points.AddXY(a.Value,a.Key);
+            }
+        }
+        List<KeyValuePair<int,double>> values = new List<KeyValuePair<int,double>>();
+        
+        public void Select_Chart_Data(DateTime baslangic_tarihi, DateTime bitis_tarihi)
+        {
+            List<KeyValuePair<string, string>> results = new List<KeyValuePair<string, string>>();
+            if (ping_test("MANVDJURT1"))
+            {
+                string baslangic = baslangic_tarihi.ToString("yyyy-MM-dd HH:mm:ss");
+                string bitis = bitis_tarihi.ToString("yyyy-MM-dd HH:mm:ss");
+                int hourDifference = ((bitis_tarihi - baslangic_tarihi).Days*24) + (bitis_tarihi - baslangic_tarihi).Hours;
+                List<KeyValuePair<string,string>> list_baslangic_bitis_temp = new List<KeyValuePair<string,string>>();
+                List<double> degerlerin_Tarih_araligi = new List<double>();
+                for (int i = 0; i < hourDifference; i++)
+                {
+                    string baslangicZamanTemp = bitis_zaman.Subtract(new TimeSpan(i+1, bitis_zaman.Minute, bitis_zaman.Second)).ToString("yyyy-MM-dd HH:mm:ss");
+                    string bitisZamanTemp = bitis_zaman.Subtract(new TimeSpan(i, bitis_zaman.Minute, bitis_zaman.Second)).ToString("yyyy-MM-dd HH:mm:ss");
+                    degerlerin_Tarih_araligi.Add(((bitis_zaman.Subtract(new TimeSpan(i, bitis_zaman.Minute, bitis_zaman.Second))).ToOADate() + bitis_zaman.Subtract(new TimeSpan(i + 1, bitis_zaman.Minute, bitis_zaman.Second)).ToOADate()) / 2);
+                    list_baslangic_bitis_temp.Add(new KeyValuePair<string, string>(baslangicZamanTemp,bitisZamanTemp));
+                }
+                    baglanti = new SqlConnection("Data Source=MANVDJURT1;" + "Password=asd.1234;User ID=astg;" + "Integrated Security=false; " + "Initial Catalog=SMARTPHONE_TEST");
+                baglanti.Open();
+                int counter = 0;
+                foreach (var kvp in list_baslangic_bitis_temp)
+                {
+                    SqlCommand sorgula = new SqlCommand("SELECT Count(*) FROM [Industry_4_0_Makina_Durus_Kayitlari_Net] WHERE Makine_Id = '23' AND Zaman BETWEEN '" + kvp.Key.ToString() + "' and '" + kvp.Value.ToString() + "' and [Bolum_Id] = '1'", baglanti);
+
+                    int count = Convert.ToInt32(sorgula.ExecuteScalar().ToString());
+                    values.Add(new KeyValuePair<int, double>(count, degerlerin_Tarih_araligi.ElementAt(counter)));
+                    counter++;
+                }
+                baglanti.Close();
+                label_baglanti.Text = "Baðlantý etkin.";
+                label_baglanti.ForeColor = Color.Green;
+            }
+            else
+            {
+                label_baglanti.Text = "Baðlantý hatasý!";
+                label_baglanti.ForeColor = Color.Red;
+            }
+        }
+
+        private bool ping_test(string ipadresi)
+        {
+            Ping ping = new Ping();
+            try
+            {
+                PingReply DonenCevap = ping.Send(ipadresi);
+
+                if (DonenCevap.Status == IPStatus.Success)
+                {
+                    label_baglanti.Text = "Baðlantý etkin.";
+                    label_baglanti.ForeColor = Color.Green;
+                    return true;
+                }
+                else if (DonenCevap.Status == IPStatus.TimedOut)
+                {
+                    return false;
+                }
+            }
+            catch (Exception e)
+            {
+                label_baglanti.Text = "Baðlantý hatasý!";
+                label_baglanti.ForeColor = Color.Red;
+                //MessageBox.Show("Baðlantýnýzý kontrol ediniz!");
+                //Application.Exit();
+            }
+            return false;
+        }
+        Point? prevPosition = null;
+        ToolTip tooltip = new ToolTip();
+        private void chart1_MouseMove(object sender, MouseEventArgs e)
+        {
+            var pos = e.Location;
+            if (prevPosition.HasValue && pos == prevPosition.Value)
+                return;
+            tooltip.RemoveAll();
+            prevPosition = pos;
+            var results = chart1.HitTest(pos.X, pos.Y, false,
+                                            ChartElementType.DataPoint);
+            foreach (var result in results)
+            {
+                if (result.ChartElementType == ChartElementType.DataPoint)
+                {
+                    var prop = result.Object as DataPoint;
+                    if (prop != null)
+                    {
+                        var pointXPixel = result.ChartArea.AxisX.ValueToPixelPosition(prop.XValue);
+                        var pointYPixel = result.ChartArea.AxisY.ValueToPixelPosition(prop.YValues[0]);
+
+                        // check if the cursor is really close to the point (2 pixels around the point)
+                        if (Math.Abs(pos.X - pointXPixel) < 2 &&
+                            Math.Abs(pos.Y - pointYPixel) < 2)
+                        {
+                            tooltip.Show("X=" + prop.XValue + ", Y=" + prop.YValues[0], this.chart1,
+                                            pos.X, pos.Y - 15);
+                        }
+                    }
+                }
+            }
+        }
+        private void chart1_GetToolTipText(object sender, ToolTipEventArgs e)
+        {
+            // Check selected chart element and set tooltip text for it
+            switch (e.HitTestResult.ChartElementType)
+            {
+                case ChartElementType.DataPoint:
+                    var dataPoint = e.HitTestResult.Series.Points[e.HitTestResult.PointIndex];
+                    e.Text = string.Format("Deðer: {0}", dataPoint.YValues[0]);
+                    break;
+            }
+        }
+    }
+}
