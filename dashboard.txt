@@ -17,7 +17,7 @@ namespace AgileSWDev
     {
         private DateTime baslangic_zaman;
         private DateTime bitis_zaman;
-        private static SqlConnection baglanti = new SqlConnection("Data Source=MANVDJURT1;" + "Password=asd.1234;User ID=astg;" +
+        private static SqlConnection baglanti = new SqlConnection("Data Source=ZHMANCLS01;" + "Password=asd.1234;User ID=astg;" +
        "Integrated Security=false; " + "Initial Catalog=SMARTPHONE_TEST");
         SqlDataReader oku;
 
@@ -46,6 +46,16 @@ namespace AgileSWDev
             dateTimePicker_Bitis.Format = DateTimePickerFormat.Custom;
             dateTimePicker_Bitis.CustomFormat = "dd MM yyyy HH mm ss";
             Load_Display_Preferences();
+            if (ping_test("ZHMANCLS01"))
+            {
+                label_baglanti.Text = "Baðlantý etkin.";
+                label_baglanti.ForeColor = Color.Green;
+            }
+            else
+            {
+                label_baglanti.Text = "Baðlantý yok!";
+                label_baglanti.ForeColor = Color.Red;
+            }
         }
 
         private void manfile_ile_zamani_senkronize_et()
@@ -174,54 +184,76 @@ namespace AgileSWDev
             baslangic_zaman = dateTimePicker_Baslangic.Value;
             bitis_zaman = dateTimePicker_Bitis.Value;
         }
-
+        bool once = false;
         private void button_Sonuclari_Getir_Click(object sender, EventArgs e)
         {
-            chart1.Series.Clear();
-            baslangic_zaman = dateTimePicker_Baslangic.Value;
-            bitis_zaman = dateTimePicker_Bitis.Value;
-            if (chart1.Series.IndexOf(comboBox_display_preferences.Text) == -1)
+            if (tabControl1.SelectedTab.Name == UretimPage.Name)
             {
-                chart1.Series.Add(comboBox_display_preferences.Text);
+                chart1.Series.Clear();
+                baslangic_zaman = dateTimePicker_Baslangic.Value;
+                bitis_zaman = dateTimePicker_Bitis.Value;
+                values.Clear();
+                if (chart1.Series.IndexOf(comboBox_display_preferences.Text) == 0)
+                {
+                    chart1.Series[comboBox_display_preferences.Text].Points.Clear();
+                }
+                else if (chart1.Series.IndexOf(comboBox_display_preferences.Text) == -1)
+                {
+                    chart1.Series.Add(comboBox_display_preferences.Text);
+                }
+
+                chart1.Series[comboBox_display_preferences.Text].ChartType = SeriesChartType.Column;
+                chart1.Series[comboBox_display_preferences.Text].XValueType = ChartValueType.DateTime;
+                chart1.ChartAreas[0].AxisX.IntervalType = DateTimeIntervalType.Hours;
+                chart1.ChartAreas[0].AxisX.LabelStyle.Format = "yyyy-MM-dd HH:mm:ss";
+                CultureInfo ci = CultureInfo.InvariantCulture;
+                string xAxisMinimum = dateTimePicker_Baslangic.Value.Date.ToString("yyyy-MM-dd HH:mm:ss").Substring(0, 10) + " 08:00:00";
+                string xAxisMaxiumum = dateTimePicker_Bitis.Value.Date.ToString("yyyy-MM-dd HH:mm:ss").Substring(0, 10) + " 18:00:00";
+                DateTime startdate = DateTime.ParseExact(xAxisMinimum, "yyyy-MM-dd HH:mm:ss", ci);
+                DateTime enddate = DateTime.ParseExact(xAxisMaxiumum, "yyyy-MM-dd HH:mm:ss", ci);
+                chart1.ChartAreas[0].AxisX.Maximum = enddate.ToOADate();
+                chart1.ChartAreas[0].AxisX.Minimum = startdate.ToOADate();
+
+                chart1.Series[comboBox_display_preferences.Text].IsValueShownAsLabel = true;
+
+                Select_Chart_Data(baslangic_zaman, bitis_zaman);
+                int counter = 0;
+                foreach (var a in values)
+                {
+                    chart1.Series[comboBox_display_preferences.Text].Points.AddXY(a.Value, a.Key);
+                    chart1.Series[comboBox_display_preferences.Text].Points[counter].Label = a.Key.ToString();
+                    counter++;
+                }
+
+                chart1.Series[comboBox_display_preferences.Text].Points.ResumeUpdates();
+                chart1.Update();
+                chart1.UpdateAnnotations();
+                chart1.UpdateCursor();
             }
             else
-                chart1.Series[comboBox_display_preferences.Text].Points.Clear();
+            {
+                baslangic_zaman = dateTimePicker_Baslangic.Value;
+                bitis_zaman = dateTimePicker_Bitis.Value;
 
-            chart1.Series[comboBox_display_preferences.Text].XValueType = ChartValueType.DateTime;
-            chart1.ChartAreas[0].AxisY.Maximum = 200;
-            chart1.ChartAreas[0].AxisX.IntervalType = DateTimeIntervalType.Hours;
-            chart1.Series[comboBox_display_preferences.Text].ChartType = SeriesChartType.Column;
-            chart1.ChartAreas[0].AxisX.LabelStyle.Format = "yyyy-MM-dd HH:mm:ss";
-            DateTime now = DateTime.Now;
-            CultureInfo ci = CultureInfo.InvariantCulture;
+                DurusGridDoldurAutoT(baslangic_zaman, bitis_zaman);
 
-            string xAxisMinimum = dateTimePicker_Baslangic.Value.Date.ToString("yyyy-MM-dd HH:mm:ss").Substring(0, 10) + " 08:00:00";
-            string xAxisMaxiumum = dateTimePicker_Bitis.Value.Date.ToString("yyyy-MM-dd HH:mm:ss").Substring(0, 10)+" 18:00:00";
-            
-            DateTime startdate = DateTime.ParseExact(xAxisMinimum, "yyyy-MM-dd HH:mm:ss", ci);
-            DateTime enddate = DateTime.ParseExact(xAxisMaxiumum, "yyyy-MM-dd HH:mm:ss", ci);
-            chart1.Series[comboBox_display_preferences.Text].IsValueShownAsLabel = true;
-            chart1.ChartAreas[0].AxisX.Maximum = enddate.ToOADate();
-            chart1.ChartAreas[0].AxisX.Minimum = startdate.ToOADate();
-            double xDegeri = (bitis_zaman.ToOADate() + baslangic_zaman.ToOADate())/2;
-            Select_Chart_Data(baslangic_zaman, bitis_zaman);
-            foreach(var a in values)
-            {                
-            chart1.Series[comboBox_display_preferences.Text].Points.AddXY(a.Value,a.Key);
             }
+            
+
         }
         List<KeyValuePair<int,double>> values = new List<KeyValuePair<int,double>>();
         
         public void Select_Chart_Data(DateTime baslangic_tarihi, DateTime bitis_tarihi)
         {
             List<KeyValuePair<string, string>> results = new List<KeyValuePair<string, string>>();
-            if (ping_test("MANVDJURT1"))
+            if (ping_test("ZHMANCLS01"))
             {
                 string baslangic = baslangic_tarihi.ToString("yyyy-MM-dd HH:mm:ss");
-                string bitis = bitis_tarihi.ToString("yyyy-MM-dd HH:mm:ss");
-                int hourDifference = ((bitis_tarihi - baslangic_tarihi).Days*24) + (bitis_tarihi - baslangic_tarihi).Hours;
+                string bitis = bitis_tarihi.Add(new TimeSpan(1,0,0)).ToString("yyyy-MM-dd HH:mm:ss");
+                int hourDifference = ((bitis_tarihi - baslangic_tarihi).Days * 24) + (bitis_tarihi.Add(new TimeSpan(1, 0, 0)) - baslangic_tarihi).Hours;
                 List<KeyValuePair<string,string>> list_baslangic_bitis_temp = new List<KeyValuePair<string,string>>();
                 List<double> degerlerin_Tarih_araligi = new List<double>();
+                bitis_zaman = bitis_zaman.Add(new TimeSpan(1, 0, 0));
                 for (int i = 0; i < hourDifference; i++)
                 {
                     string baslangicZamanTemp = bitis_zaman.Subtract(new TimeSpan(i+1, bitis_zaman.Minute, bitis_zaman.Second)).ToString("yyyy-MM-dd HH:mm:ss");
@@ -229,16 +261,26 @@ namespace AgileSWDev
                     degerlerin_Tarih_araligi.Add(((bitis_zaman.Subtract(new TimeSpan(i, bitis_zaman.Minute, bitis_zaman.Second))).ToOADate() + bitis_zaman.Subtract(new TimeSpan(i + 1, bitis_zaman.Minute, bitis_zaman.Second)).ToOADate()) / 2);
                     list_baslangic_bitis_temp.Add(new KeyValuePair<string, string>(baslangicZamanTemp,bitisZamanTemp));
                 }
-                    baglanti = new SqlConnection("Data Source=MANVDJURT1;" + "Password=asd.1234;User ID=astg;" + "Integrated Security=false; " + "Initial Catalog=SMARTPHONE_TEST");
+                    baglanti = new SqlConnection("Data Source=ZHMANCLS01;" + "Password=asd.1234;User ID=astg;" + "Integrated Security=false; " + "Initial Catalog=SMARTPHONE_TEST");
                 baglanti.Open();
                 int counter = 0;
-                foreach (var kvp in list_baslangic_bitis_temp)
+                try
                 {
-                    SqlCommand sorgula = new SqlCommand("SELECT Count(*) FROM [Industry_4_0_Makina_Durus_Kayitlari_Net] WHERE Makine_Id = '23' AND Zaman BETWEEN '" + kvp.Key.ToString() + "' and '" + kvp.Value.ToString() + "' and [Bolum_Id] = '1'", baglanti);
+                    foreach (var kvp in list_baslangic_bitis_temp)
+                    {
+                        SqlCommand sorgula = new SqlCommand("SELECT Count(*) FROM [Industry_4_0_Makina_Durus_Kayitlari_Net] WHERE Makine_Id = '23' AND Zaman BETWEEN '" + kvp.Key.ToString() + "' and '" + kvp.Value.ToString() + "' and [Bolum_Id] = '1'", baglanti);
 
-                    int count = Convert.ToInt32(sorgula.ExecuteScalar().ToString());
-                    values.Add(new KeyValuePair<int, double>(count, degerlerin_Tarih_araligi.ElementAt(counter)));
-                    counter++;
+                        int count = Convert.ToInt32(sorgula.ExecuteScalar().ToString());
+                        values.Add(new KeyValuePair<int, double>(count, degerlerin_Tarih_araligi.ElementAt(counter)));
+                        counter++;
+                    }
+                }
+                catch
+                {
+                    label_baglanti.Text = "Baðlantý hatasý!";
+                    label_baglanti.ForeColor = Color.Red;
+                    baglanti.Close();
+                    return;
                 }
                 baglanti.Close();
                 label_baglanti.Text = "Baðlantý etkin.";
@@ -250,6 +292,65 @@ namespace AgileSWDev
                 label_baglanti.ForeColor = Color.Red;
             }
         }
+
+
+        public void DurusGridDoldurAutoT(DateTime baslangic_tarihi, DateTime bitis_tarihi)
+        {
+            //baslangic_zaman = dateTimePicker_Baslagic.Value;
+            //baslangic = baslangic_zaman.ToString("yyyy-MM-dd HH:mm:ss");
+            //bitis_zaman = dateTimePicker_Bitis.Value;
+            //bitis = bitis_zaman.ToString("yyyy-MM-dd HH:mm:ss");
+            //query = ""; query1 = ""; query2 = ""; flagKombo = true;
+
+            //if (baslangic_zaman.Hour.ToString() == "7" || baslangic_zaman.Hour.ToString() == "6" || baslangic_zaman.Hour.ToString() == "5" || baslangic_zaman.Hour.ToString() == "4" || baslangic_zaman.Hour.ToString() == "3" || baslangic_zaman.Hour.ToString() == "2" || baslangic_zaman.Hour.ToString() == "1" || baslangic_zaman.Hour.ToString() == "0")
+            //{
+            //    bas1 = baslangic_zaman;
+            //    bas1 = bas1.AddDays(-1);
+            //    bit1 = bitis_zaman;
+            //    tanim = bit1;
+
+
+            //}
+            //else
+            //{
+
+            //    bas1 = baslangic_zaman;
+            //    bit1 = bitis_zaman;
+            //    tanim = bit1.AddDays(1);
+            //}
+
+            string baslangic = baslangic_tarihi.ToString("yyyy-MM-dd HH:mm:ss");
+            string bitis = bitis_tarihi.Add(new TimeSpan(1, 0, 0)).ToString("yyyy-MM-dd HH:mm:ss");
+
+            try
+            {
+                baglanti.Open();
+
+                SqlDataAdapter dataadapter = new SqlDataAdapter("SELECT  B.Kayit_Giren_Turu, Operator_Sicili ,S.Durus_Turu_Nedeni , Durus_Baslangici ,[Durus_Bitisi] , DATEDIFF(MI ,Durus_Baslangici,Durus_Bitisi) AS Sure_Farki_dk, A.Durus_Neden_Sayi as Durus_Turu_Adedi  FROM [SMARTPHONE_TEST].[dbo].[Industry_4_0_Makina_Durus_Kayitlari] A, [SMARTPHONE_TEST].[dbo].[Industry_4_0_Makina_Durus_Kayitlari_Kayit_Giren_Turleri_Tanimlari] B ,[SMARTPHONE_TEST].[dbo].[Industry_4_0_Makina_Durus_Kayitlari_Durus_Tanimlari] S  WHERE A.Durus_Baslangici between '" + baslangic + "' AND '" + bitis + "' AND A.Calisilan_Bolum='1'  AND A.Calisilan_Bolum= B.Calisilan_Bolum AND A.Calisilan_Bolum = S.Calisilan_Bolum AND A.Kayit_Giren_Türü = B.Sira_No AND A.Durus_Turu_Nedeni =S.Sira_No order by Durus_Baslangici desc", baglanti);
+                DataSet ds = new DataSet();
+
+                dataadapter.Fill(ds, "Kayit_Giren_Turu");
+
+                dataGridView_Excel.DefaultCellStyle.BackColor = Color.LightBlue;//Default hücre stilini rengini belirliyouz
+
+                dataGridView_Excel.AlternatingRowsDefaultCellStyle.BackColor = Color.White;//Alternatif satýr default hücre stil rengini belirliyoruz
+
+                dataGridView_Excel.DataSource = ds.Tables["Kayit_Giren_Turu"];//sqlCmd sorgusu ile çektiðimiz kayýtlar datagridview1 üzerinde gösteriliyor
+
+                dataGridView_Excel.Columns[3].DefaultCellStyle.Format = "dd/MM/yyyy HH:mm:ss";
+
+                dataGridView_Excel.Columns[4].DefaultCellStyle.Format = "dd/MM/yyyy HH:mm:ss";
+
+                dataGridView_Excel.Columns[1].HeaderText = "Kayýt Giren Sicili";
+                dataGridView_Excel.Columns[2].HeaderText = "Sonuç Detay";
+                dataGridView_Excel.Columns[3].HeaderText = "Baþlangýç";
+                dataGridView_Excel.Columns[4].HeaderText = "Bitiþ";
+                dataGridView_Excel.Columns[5].HeaderText = "Periyot(dk)";
+                baglanti.Close();
+            }
+            catch { }
+        } // okke
+
 
         private bool ping_test(string ipadresi)
         {
@@ -278,38 +379,7 @@ namespace AgileSWDev
             }
             return false;
         }
-        Point? prevPosition = null;
-        ToolTip tooltip = new ToolTip();
-        private void chart1_MouseMove(object sender, MouseEventArgs e)
-        {
-            var pos = e.Location;
-            if (prevPosition.HasValue && pos == prevPosition.Value)
-                return;
-            tooltip.RemoveAll();
-            prevPosition = pos;
-            var results = chart1.HitTest(pos.X, pos.Y, false,
-                                            ChartElementType.DataPoint);
-            foreach (var result in results)
-            {
-                if (result.ChartElementType == ChartElementType.DataPoint)
-                {
-                    var prop = result.Object as DataPoint;
-                    if (prop != null)
-                    {
-                        var pointXPixel = result.ChartArea.AxisX.ValueToPixelPosition(prop.XValue);
-                        var pointYPixel = result.ChartArea.AxisY.ValueToPixelPosition(prop.YValues[0]);
 
-                        // check if the cursor is really close to the point (2 pixels around the point)
-                        if (Math.Abs(pos.X - pointXPixel) < 2 &&
-                            Math.Abs(pos.Y - pointYPixel) < 2)
-                        {
-                            tooltip.Show("X=" + prop.XValue + ", Y=" + prop.YValues[0], this.chart1,
-                                            pos.X, pos.Y - 15);
-                        }
-                    }
-                }
-            }
-        }
         private void chart1_GetToolTipText(object sender, ToolTipEventArgs e)
         {
             // Check selected chart element and set tooltip text for it
